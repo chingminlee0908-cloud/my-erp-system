@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>包裝盒倉庫管理 (Image Ver.)</title>
+    <title>包裝盒倉庫管理 (Firebase Connected)</title>
     
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -209,7 +209,7 @@
             
             #inventory-list-container {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); /* Slightly wider for images */
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
                 gap: 20px;
             }
             .category-header { grid-column: 1 / -1; margin-top: 30px; }
@@ -227,37 +227,22 @@
                 align-items: flex-start;
             }
             .item-thumb, .item-thumb-placeholder {
-                width: 80px; height: 80px; /* Larger on PC */
+                width: 80px; height: 80px; 
             }
             
             .item-row > div:last-child { width: 100%; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 5px; }
         }
         
-        /* Mobile List Adjustment */
         @media (max-width: 767px) {
             .item-row {
-                display: flex;
-                flex-direction: row; /* Horizontal on mobile */
-                align-items: center;
-                gap: 12px;
-                padding: 12px;
+                display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 12px;
             }
             .item-info-container {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                flex: 1;
-                min-width: 0; /* Text truncation fix */
+                display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;
             }
-            .item-info {
-                min-width: 0;
-            }
-            /* Move stock to right */
+            .item-info { min-width: 0; }
             .item-stock-container {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-end;
-                min-width: 60px;
+                display: flex; flex-direction: column; align-items: flex-end; min-width: 60px;
             }
         }
 
@@ -583,6 +568,34 @@
     </div>
 </div>
 
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyB8QiVjk-PRxre7xlt389vs0Hf5aBiAXrg",
+    authDomain: "my-erp-system-6521c.firebaseapp.com",
+    projectId: "my-erp-system-6521c",
+    storageBucket: "my-erp-system-6521c.firebasestorage.app",
+    messagingSenderId: "374424194868",
+    appId: "1:374424194868:web:521879509c985ca0dd1f61",
+    measurementId: "G-EQDX9HSNMX"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const db = getFirestore(app);
+
+  // 為了讓非 Module 的主程式也能存取 Firebase 實例，我們將其掛載到 window
+  window.firebaseApp = app;
+  window.firebaseDb = db;
+  console.log("Firebase initialized");
+</script>
+
 <script>
     const App = function() {
         this.data = { items: [], movements: [], categories: { main: [], sub: [] } };
@@ -902,7 +915,8 @@
         this.openScanner = () => {
             document.getElementById('modal-scanner').classList.add('open');
             if(!this.html5QrcodeScanner) {
-                this.html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250, aspectRatio: 1.0 });
+                const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0, videoConstraints: { facingMode: "environment" } };
+                this.html5QrcodeScanner = new Html5QrcodeScanner("reader", config);
                 this.html5QrcodeScanner.render((txt) => {
                     const item = this.data.items.find(i => i.code === txt);
                     if (item) {

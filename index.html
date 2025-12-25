@@ -3,25 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>包裝盒倉庫 (雲端同步版)</title>
+    <title>倉庫管理系統</title>
     
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
     <style>
         :root {
+            /* --- Morandi Palette --- */
             --bg-app: #F2EFE9;     
             --bg-card: #FFFFFF;    
             --text-main: #5E5A54;  
             --text-light: #9E9991; 
+            
             --primary: #8F9EAC;
             --primary-soft: #CFD8DC; 
+            --primary-dark: #6d7d8b;
+            
             --danger: #C07F7F;
             --success: #8BA38D;
             --warning: #C7B285;
+            
+            --shadow-soft: 0 2px 10px rgba(94, 90, 84, 0.05); 
+            --shadow-hover: 0 8px 20px rgba(94, 90, 84, 0.1);
             --border-subtle: 1px solid #EBE8E1; 
+            
             --radius-lg: 16px;
             --radius-md: 12px;
+            
+            /* Layout Vars */
             --nav-height-mobile: 70px;
             --sidebar-width: 240px;
             --content-max-width: 1100px;
@@ -36,14 +46,25 @@
             padding-bottom: calc(var(--nav-height-mobile) + 20px); 
         }
 
-        /* --- Layout --- */
-        .app-layout { display: flex; min-height: 100vh; flex-direction: column; }
-        .main-content { flex: 1; width: 100%; max-width: var(--content-max-width); margin: 0 auto; padding: 20px; }
+        /* --- Layout Structure (PC Optimized) --- */
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex: 1;
+            width: 100%;
+            max-width: var(--content-max-width);
+            margin: 0 auto;
+            padding: 20px;
+        }
         
         /* --- Loading Overlay --- */
         #loading-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(242, 239, 233, 0.9); z-index: 9999;
+            background: rgba(242, 239, 233, 0.95); z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             transition: opacity 0.3s;
         }
@@ -56,110 +77,253 @@
 
         /* --- Components --- */
         .neu-card {
-            background: var(--bg-card); border-radius: var(--radius-lg);
-            padding: 20px; margin-bottom: 20px; border: var(--border-subtle);
-            box-shadow: 0 2px 10px rgba(94, 90, 84, 0.05);
+            background: var(--bg-card);
+            box-shadow: var(--shadow-soft);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: var(--border-subtle);
+            height: 100%;
             display: flex; flex-direction: column; justify-content: space-between;
         }
 
         .neu-btn {
-            background: var(--primary-soft); color: var(--text-main); border: none;
-            border-radius: 50px; font-weight: 600; padding: 10px 20px;
-            cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-            font-size: 0.95rem; transition: transform 0.1s;
+            background: var(--primary-soft);
+            color: var(--text-main);
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            font-size: 0.95rem;
         }
-        .neu-btn:active { transform: scale(0.96); }
-        .neu-btn.success { background: var(--primary); color: white; }
+        .neu-btn.success, button[type="submit"] { background: var(--primary); color: white; }
+        .neu-btn:active { transform: scale(0.98); opacity: 0.9; }
         .neu-btn.danger { background: rgba(192, 127, 127, 0.15); color: var(--danger); }
         .neu-btn.warning { background: rgba(199, 178, 133, 0.15); color: var(--warning); }
         .neu-btn.sm { padding: 6px 14px; font-size: 0.85rem; }
         
-        .neu-input, .neu-select, .neu-textarea {
-            width: 100%; background: #FCFAF8; border: 1px solid #DEDAD4;
-            border-radius: var(--radius-md); padding: 12px 16px; font-size: 1rem;
-            outline: none; margin-bottom: 12px;
+        .fab-scan {
+            position: fixed;
+            bottom: calc(var(--nav-height-mobile) + 20px);
+            right: 20px;
+            width: 56px; height: 56px;
+            background: var(--text-main);
+            color: white;
+            border-radius: 50%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.5rem; z-index: 90; cursor: pointer;
+            transition: transform 0.2s;
         }
-        .neu-input:focus { border-color: var(--primary); background: white; }
+        .fab-scan:active { transform: scale(0.9); }
+
+        /* Inputs */
+        .neu-input, .neu-select, .neu-textarea {
+            width: 100%;
+            background: #FCFAF8;
+            border: 1px solid #DEDAD4;
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            font-size: 1rem; color: var(--text-main);
+            outline: none; margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+        .neu-input:focus, .neu-select:focus { border-color: var(--primary); background: white; }
         label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
 
-        /* --- Images --- */
+        /* Image Upload Styles */
         .image-preview-box {
-            width: 100%; height: 180px; border: 2px dashed var(--primary-soft);
-            border-radius: var(--radius-md); display: flex; justify-content: center; align-items: center;
-            background: #fdfdfd; margin-bottom: 15px; position: relative; overflow: hidden; cursor: pointer;
+            width: 100%;
+            height: 180px;
+            border: 2px dashed var(--primary-soft);
+            border-radius: var(--radius-md);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: #fdfdfd;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
         }
-        .image-preview-box img { width: 100%; height: 100%; object-fit: contain; display: none; }
+        .image-preview-box img {
+            width: 100%; height: 100%; object-fit: contain;
+            display: none;
+        }
         .image-preview-box.has-image img { display: block; }
         .image-preview-box.has-image .placeholder { display: none; }
-        .item-thumb { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-subtle); flex-shrink: 0; }
-        .item-thumb-placeholder { width: 60px; height: 60px; border-radius: 8px; background: #eee; display:flex; align-items:center; justify-content:center; color:#aaa; font-size:1.5rem; flex-shrink: 0; }
+        .image-preview-box input[type="file"] {
+            position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+        }
 
-        /* --- Responsive --- */
+        /* List Thumbnails */
+        .item-thumb {
+            width: 60px; height: 60px;
+            border-radius: 8px;
+            background-color: #eee;
+            object-fit: cover;
+            flex-shrink: 0;
+            border: 1px solid var(--border-subtle);
+        }
+        .item-thumb-placeholder {
+            width: 60px; height: 60px;
+            border-radius: 8px;
+            background-color: #f0f0f0;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-light);
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        /* --- Header & Nav --- */
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        /* Dynamic Header Title */
         .header h1 { margin: 0; font-size: 1.5rem; color: var(--primary); font-weight: 700; display:flex; align-items:center; gap:8px;}
-        
+
         .nav-bar {
             position: fixed; bottom: 0; left: 0; width: 100%; height: var(--nav-height-mobile);
-            background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);
-            border-top: var(--border-subtle); display: flex; justify-content: space-around; align-items: center; z-index: 100;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 -2px 20px rgba(0,0,0,0.05);
+            display: flex; justify-content: space-around; align-items: center; z-index: 100;
+            border-top: var(--border-subtle);
         }
-        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 0.75rem; color: var(--text-light); background:none; border:none; cursor: pointer; flex:1; height:100%; justify-content:center;}
-        .nav-item.active { color: var(--primary); font-weight: 700; }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 0.75rem; color: var(--text-light); background: none; border: none; 
+            cursor: pointer; height: 100%; flex: 1;
+        }
         .nav-item i { font-size: 1.5rem; margin-bottom: 4px; }
+        .nav-item.active { color: var(--primary); font-weight: 700; }
+        .nav-item.active i { color: var(--primary); weight: bold; }
 
+        /* --- Desktop Media Query --- */
         @media (min-width: 768px) {
             body { padding-bottom: 0; }
             .app-layout { flex-direction: row; }
             .nav-bar {
-                position: sticky; top: 0; left: 0; width: var(--sidebar-width); height: 100vh;
-                flex-direction: column; justify-content: flex-start; padding-top: 40px; border-top: none; border-right: var(--border-subtle);
+                position: sticky; top: 0; left: 0;
+                width: var(--sidebar-width);
+                height: 100vh;
+                flex-direction: column;
+                justify-content: flex-start;
+                padding-top: 40px;
+                border-top: none;
+                border-right: var(--border-subtle);
+                background: white;
             }
-            .nav-item { flex: 0; height: 60px; width: 100%; flex-direction: row; justify-content: flex-start; padding-left: 40px; gap: 15px; font-size: 1rem; }
+            .nav-item { 
+                flex: 0; height: 60px; width: 100%; 
+                flex-direction: row; justify-content: flex-start; 
+                padding-left: 40px; gap: 15px;
+                font-size: 1rem;
+            }
             .nav-item i { margin-bottom: 0; font-size: 1.4rem; }
-            #inventory-list-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-            .category-header { grid-column: 1 / -1; margin-top: 30px; }
-            .item-row { flex-direction: column; align-items: flex-start; gap: 15px; }
-            .item-row > div:first-child { width: 100%; display: flex; gap: 15px; }
-            .item-row > div:last-child { width: 100%; display: flex; justify-content: space-between; border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 5px; }
             .fab-scan { bottom: 40px; right: 40px; }
+            
+            #inventory-list-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                gap: 20px;
+            }
+            .category-header { grid-column: 1 / -1; margin-top: 30px; }
+            
+            .item-row { 
+                margin-bottom: 0; 
+                flex-direction: column; 
+                align-items: flex-start; 
+                gap: 15px; 
+            }
+            .item-info-container {
+                width: 100%;
+                display: flex;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            .item-thumb, .item-thumb-placeholder {
+                width: 80px; height: 80px; 
+            }
+            
+            .item-row > div:last-child { width: 100%; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f0f0f0; padding-top: 10px; margin-top: 5px; }
         }
-
+        
         @media (max-width: 767px) {
-            .item-row { display: flex; align-items: center; gap: 12px; }
-            .item-info-container { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-            .item-stock-container { display: flex; flex-direction: column; align-items: flex-end; min-width: 60px; }
+            .item-row {
+                display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 12px;
+            }
+            .item-info-container {
+                display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;
+            }
+            .item-info { min-width: 0; }
+            .item-stock-container {
+                display: flex; flex-direction: column; align-items: flex-end; min-width: 60px;
+            }
         }
 
-        /* --- Misc --- */
-        .category-header { margin-top: 25px; margin-bottom: 12px; padding-left: 12px; font-size: 1.1rem; font-weight: 700; color: var(--text-main); border-left: 4px solid var(--primary); display: flex; justify-content: space-between; }
-        .stock-number { font-size: 1.6rem; font-weight: 700; color: var(--success); }
-        .low-stock-row .stock-number { color: var(--danger); }
-        .tag-chip { background: var(--bg-app); border: 1px solid var(--border-subtle); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; margin-right: 5px; color: var(--text-light); }
+
+        /* --- Inventory List Styles --- */
+        .category-header {
+            margin-top: 25px; margin-bottom: 12px; padding-left: 12px;
+            font-size: 1.1rem; font-weight: 700; color: var(--text-main);
+            border-left: 4px solid var(--primary);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .item-info h3 { margin: 0 0 4px 0; font-size: 1.05rem; color: var(--text-main); font-weight:600; }
+        .stock-number { font-size: 1.6rem; font-weight: 700; color: var(--success); line-height: 1.2; }
+        .item-row.low-stock-row .stock-number { color: var(--danger); }
+        
+        /* --- Type Buttons --- */
         .type-btn { flex: 1; }
         .type-btn.active[data-type="in"] { background: var(--success); color: white; }
         .type-btn.active[data-type="out"] { background: var(--danger); color: white; }
         .type-btn.active[data-type="adj"] { background: var(--warning); color: white; }
-        
-        .fab-scan { position: fixed; bottom: calc(var(--nav-height-mobile) + 20px); right: 20px; width: 56px; height: 56px; background: var(--text-main); color: white; border-radius: 50%; box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; justify-content: center; align-items: center; font-size: 1.5rem; z-index: 90; cursor: pointer; }
-        .fab-scan:active { transform: scale(0.9); }
 
-        .hidden { display: none !important; }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        /* --- Settings Chips --- */
+        .edit-chip {
+            display: inline-flex; align-items: center;
+            background: white; border: 1px solid var(--border-subtle);
+            border-radius: 20px; overflow: hidden;
+            margin: 0 8px 8px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .edit-chip-name {
+            padding: 6px 12px; cursor: pointer; font-size: 0.9rem;
+            border-right: 1px solid var(--border-subtle);
+            display: flex; align-items: center; gap: 4px;
+        }
+        .edit-chip-name:active { background: #f0f0f0; }
+        .edit-chip-del {
+            padding: 6px 10px; cursor: pointer; color: var(--danger);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .edit-chip-del:active { background: #fff0f0; }
         
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(94, 90, 84, 0.6); backdrop-filter: blur(4px); z-index: 200; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.2s; }
-        .modal-overlay.open { opacity: 1; visibility: visible; }
-        .modal-content { width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; background: var(--bg-card); border-radius: var(--radius-lg); padding: 25px; }
-
-        /* Settings Chips */
-        .edit-chip { display: inline-flex; background: white; border: 1px solid var(--border-subtle); border-radius: 20px; margin: 0 8px 8px 0; overflow:hidden; }
-        .edit-chip-name { padding: 6px 12px; cursor: pointer; font-size: 0.9rem; border-right: 1px solid var(--border-subtle); }
-        .edit-chip-del { padding: 6px 10px; cursor: pointer; color: var(--danger); display: flex; align-items:center; }
-        
-        .history-item { border-left: 4px solid #ccc; padding: 15px; }
+        /* History Items */
+        .history-item { border-left: 4px solid transparent; padding: 15px; position: relative;}
         .history-item.type-in { border-left-color: var(--success); }
         .history-item.type-out { border-left-color: var(--danger); }
         .history-item.type-adj { border-left-color: var(--warning); }
         .history-item.voided { opacity: 0.5; filter: grayscale(1); }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(94, 90, 84, 0.6);
+            backdrop-filter: blur(4px); z-index: 200;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: opacity 0.2s;
+        }
+        .modal-overlay.open { opacity: 1; visibility: visible; }
+        .modal-content { width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; background: var(--bg-card); border-radius: var(--radius-lg); padding: 25px; box-shadow: var(--shadow-hover); }
+
+        /* Utils */
+        .hidden { display: none !important; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .tag-chip { background: var(--bg-app); border: 1px solid var(--border-subtle); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; margin-right: 5px; color: var(--text-light); }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+        .badge.low-stock { background: rgba(192, 127, 127, 0.15); color: var(--danger); }
+        .badge.normal { background: rgba(139, 163, 141, 0.15); color: var(--success); }
     </style>
 </head>
 <body>
@@ -171,61 +335,93 @@
 
 <div class="app-layout">
     <nav class="nav-bar">
-        <div style="font-weight:bold; font-size:1.2rem; margin-bottom:20px; color:var(--primary); padding-left:40px; display:none; @media(min-width:768px){display:block;}">📦 倉庫管理</div>
-        <button class="nav-item active" onclick="app.switchTab('view-inventory', this)"><i class="ph ph-package"></i><span>庫存</span></button>
-        <button class="nav-item" id="nav-move" onclick="app.switchTab('view-movement', this)"><i class="ph ph-arrows-left-right"></i><span>進出</span></button>
-        <button class="nav-item" onclick="app.switchTab('view-history', this)"><i class="ph ph-clock-counter-clockwise"></i><span>紀錄</span></button>
-        <button class="nav-item" onclick="app.switchTab('view-settings', this)"><i class="ph ph-sliders"></i><span>設定</span></button>
+        <div id="sidebar-app-title" style="font-weight:bold; font-size:1.2rem; margin-bottom:20px; color:var(--primary); padding-left:40px; display:none; @media(min-width:768px){display:block;}">
+            📦 倉庫管理
+        </div>
+        <button class="nav-item active" onclick="app.switchTab('view-inventory', this)">
+            <i class="ph ph-package"></i><span>庫存總覽</span>
+        </button>
+        <button class="nav-item" id="nav-move" onclick="app.switchTab('view-movement', this)">
+            <i class="ph ph-arrows-left-right"></i><span>進出作業</span>
+        </button>
+        <button class="nav-item" onclick="app.switchTab('view-history', this)">
+            <i class="ph ph-clock-counter-clockwise"></i><span>歷史紀錄</span>
+        </button>
+        <button class="nav-item" onclick="app.switchTab('view-settings', this)">
+            <i class="ph ph-sliders"></i><span>系統設定</span>
+        </button>
     </nav>
 
     <main class="main-content">
         <div class="header">
-            <h1><i class="ph ph-cloud-check"></i> 倉庫管理 (雲端版)</h1>
-            <button class="neu-btn sm" style="background: white;" onclick="location.reload()"><i class="ph ph-arrow-clockwise"></i></button>
+            <h1 id="header-app-title"><i class="ph ph-cloud-check"></i> 倉庫管理 (雲端版)</h1>
+            <button class="neu-btn sm" style="background: white;" onclick="location.reload()">
+                <i class="ph ph-arrow-clockwise"></i>
+            </button>
         </div>
 
         <div id="view-inventory" class="view-section">
             <div class="neu-card" style="height: auto;">
                 <div style="position: relative;">
                     <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:12px; color:var(--text-light)"></i>
-                    <input type="text" id="search-input" class="neu-input" style="padding-left: 36px;" placeholder="搜尋..." oninput="app.renderInventory()">
+                    <input type="text" id="search-input" class="neu-input" style="padding-left: 36px;" placeholder="搜尋名稱、代號..." oninput="app.renderInventory()">
                 </div>
                 <div class="form-grid">
                     <select id="filter-main-cat" class="neu-select" onchange="app.renderInventory()"></select>
-                    <label class="neu-btn sm" style="justify-content:center; background:white; border:var(--border-subtle); color:var(--text-main); margin:0; height:46px; margin-bottom:12px;">
-                        <input type="checkbox" id="filter-low-stock" onchange="app.renderInventory()" style="margin-right:8px;"> 缺貨
+                    <label class="neu-btn sm" style="justify-content:center; background: white; border: var(--border-subtle); color: var(--text-main); margin:0; height: 46px; margin-bottom: 12px;">
+                        <input type="checkbox" id="filter-low-stock" onchange="app.renderInventory()" style="margin-right: 8px;"> 缺貨中
                     </label>
                 </div>
             </div>
-            <div style="display: flex; justify-content: flex-end; margin: 15px 0;">
-                <button class="neu-btn success" onclick="app.openItemModal()"><i class="ph ph-camera-plus"></i> 新增包裝</button>
+            
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 15px; margin-top: 15px;">
+                <button class="neu-btn success" onclick="app.openItemModal()">
+                    <i class="ph ph-camera-plus"></i> 新增包裝
+                </button>
             </div>
-            <div id="inventory-list-container"></div>
+
+            <div id="inventory-list-container">
+                </div>
         </div>
 
         <div id="view-movement" class="view-section hidden">
             <div class="neu-card" style="height: auto;">
-                <h2 style="color: var(--primary); margin-top:0;"><i class="ph ph-note-pencil"></i> 進出紀錄</h2>
+                <h2 style="color: var(--primary); margin-top:0; display:flex; align-items:center; gap:8px;">
+                    <i class="ph ph-note-pencil"></i> 進出紀錄
+                </h2>
                 <form onsubmit="app.submitMovement(event)">
-                    <label>類型</label>
+                    <label>作業類型</label>
                     <div style="display:flex; gap: 8px; margin-bottom:15px;">
-                        <button type="button" class="neu-btn type-btn active" data-type="in" onclick="app.setMoveType('in')">進庫</button>
-                        <button type="button" class="neu-btn type-btn" data-type="out" onclick="app.setMoveType('out')">領出</button>
-                        <button type="button" class="neu-btn type-btn" data-type="adj" onclick="app.setMoveType('adj')">盤點</button>
+                        <button type="button" class="neu-btn type-btn active" data-type="in" onclick="app.setMoveType('in')">
+                            <i class="ph ph-arrow-down"></i> 進庫
+                        </button>
+                        <button type="button" class="neu-btn type-btn" data-type="out" onclick="app.setMoveType('out')">
+                            <i class="ph ph-arrow-up"></i> 領出
+                        </button>
+                        <button type="button" class="neu-btn type-btn" data-type="adj" onclick="app.setMoveType('adj')">
+                            <i class="ph ph-wrench"></i> 盤點調整
+                        </button>
                     </div>
                     <input type="hidden" id="move-type" value="in">
+
                     <label>包裝盒</label>
-                    <select id="move-item-id" class="neu-select" required onchange="app.updateMoveStockHint()"><option value="">選擇...</option></select>
-                    <div id="move-stock-hint" style="font-size:0.85rem; color:var(--primary); text-align:right; margin-bottom:12px;"></div>
+                    <select id="move-item-id" class="neu-select" required onchange="app.updateMoveStockHint()">
+                        <option value="">請選擇...</option>
+                    </select>
+                    <div id="move-stock-hint" style="font-size: 0.85rem; color: var(--primary); margin-bottom: 12px; text-align: right; font-weight: 500; height: 20px;"></div>
+
                     <label id="lbl-qty">數量</label>
                     <input type="number" id="move-qty" class="neu-input" min="0" required placeholder="輸入整數">
+
                     <div class="form-grid">
                         <div><label>時間</label><input type="datetime-local" id="move-time" class="neu-input" required></div>
                         <div><label>經手人</label><input type="text" id="move-handler" class="neu-input"></div>
                     </div>
                     <label>備註</label>
-                    <input type="text" id="move-reason" class="neu-input" placeholder="例：採購...">
-                    <button type="submit" class="neu-btn success" style="width:100%; margin-top:15px; padding:12px;">確認送出</button>
+                    <input type="text" id="move-reason" class="neu-input" placeholder="例：採購、出貨...">
+                    <button type="submit" class="neu-btn success" style="width: 100%; margin-top: 15px; padding: 12px;">
+                        <i class="ph ph-check"></i> 確認送出
+                    </button>
                 </form>
             </div>
         </div>
@@ -236,67 +432,118 @@
                     <div><label>開始</label><input type="date" id="hist-start" class="neu-input" onchange="app.renderHistory()"></div>
                     <div><label>結束</label><input type="date" id="hist-end" class="neu-input" onchange="app.renderHistory()"></div>
                 </div>
-                <input type="text" id="hist-search" class="neu-input" placeholder="搜尋關鍵字..." oninput="app.renderHistory()" style="margin-top:10px;">
+                <input type="text" id="hist-search" class="neu-input" placeholder="搜尋關鍵字..." oninput="app.renderHistory()" style="margin-top: 10px;">
             </div>
-            <div id="history-list" style="margin-top:20px;"></div>
+            <div id="history-list" style="margin-top: 20px;"></div>
         </div>
 
         <div id="view-settings" class="view-section hidden">
             <div class="neu-card" style="height: auto;">
-                <h2 style="color: var(--primary); margin-top:0;"><i class="ph ph-tag"></i> 分類管理</h2>
-                <p style="font-size:0.8rem; color:var(--text-light);">點擊名稱修改，點擊 ✕ 刪除</p>
-                <div class="neu-card" style="background:#F8F9FA; border:none; padding:15px; margin-bottom:15px;">
-                    <h3 style="margin:0 0 10px 0; font-size:1rem;">大類</h3>
-                    <div id="settings-main-cat-list" style="margin-bottom:10px;"></div>
-                    <div style="display:flex; gap:8px;"><input type="text" id="new-main-cat" class="neu-input" placeholder="名稱" style="margin:0;"><button class="neu-btn success" onclick="app.addMainCat()">+</button></div>
+                <h2 style="color: var(--primary); margin-top:0; display:flex; align-items:center; gap:8px;">
+                    <i class="ph ph-sliders"></i> 系統設定
+                </h2>
+                
+                <div class="neu-card" style="background: #F8F9FA; border:none; padding: 15px; box-shadow:none; height:auto; margin-bottom:15px;">
+                    <h3 style="margin-top:0; font-size:1rem; color:var(--text-main)">系統名稱 (標題)</h3>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="setting-app-title" class="neu-input" placeholder="例如：我的倉庫管理" style="margin:0;">
+                        <button class="neu-btn sm success" onclick="app.saveAppTitle()">儲存名稱</button>
+                    </div>
+                    <p style="font-size:0.8rem; color:var(--text-light); margin:5px 0 0 0;">修改後將即時同步至所有裝置</p>
                 </div>
-                <div class="neu-card" style="background:#F8F9FA; border:none; padding:15px;">
-                    <h3 style="margin:0 0 10px 0; font-size:1rem;">小類</h3>
-                    <select id="settings-sub-cat-parent" class="neu-select" style="margin-bottom:10px;"><option value="">先選大類...</option></select>
-                    <div id="settings-sub-cat-list" style="margin-bottom:10px;"></div>
-                    <div style="display:flex; gap:8px;"><input type="text" id="new-sub-cat" class="neu-input" placeholder="名稱" style="margin:0;"><button class="neu-btn success" onclick="app.addSubCat()">+</button></div>
+
+                <h2 style="color: var(--primary); margin-top:10px; display:flex; align-items:center; gap:8px;">
+                    <i class="ph ph-tag"></i> 分類管理
+                </h2>
+                <p style="font-size:0.8rem; color:var(--text-light); margin-top:-10px; margin-bottom:15px;">點擊名稱可修改，點擊 ✕ 刪除</p>
+
+                <div class="neu-card" style="background: #F8F9FA; border:none; padding: 15px; box-shadow:none; height:auto;">
+                    <h3 style="margin-top:0; font-size:1rem; color:var(--text-main)">大類</h3>
+                    <div id="settings-main-cat-list" style="margin-bottom: 12px;"></div>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="new-main-cat" class="neu-input" placeholder="新大類名稱" style="margin:0;">
+                        <button class="neu-btn sm success" onclick="app.addMainCat()"><i class="ph ph-plus"></i></button>
+                    </div>
+                </div>
+
+                <div class="neu-card" style="background: #F8F9FA; border:none; padding: 15px; box-shadow:none; margin-top:15px; height:auto;">
+                    <h3 style="margin-top:0; font-size:1rem; color:var(--text-main)">小類</h3>
+                    <select id="settings-sub-cat-parent" class="neu-select" style="margin-bottom:10px;">
+                        <option value="">先選擇大類...</option>
+                    </select>
+                    <div id="settings-sub-cat-list" style="margin-bottom: 12px;"></div>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="new-sub-cat" class="neu-input" placeholder="新小類名稱" style="margin:0;">
+                        <button class="neu-btn sm success" onclick="app.addSubCat()"><i class="ph ph-plus"></i></button>
+                    </div>
                 </div>
             </div>
-            <div class="neu-card" style="border-color:var(--danger); height:auto; margin-top:20px;">
-                <button class="neu-btn danger" style="width:100%;" onclick="app.clearAllData()"><i class="ph ph-trash"></i> 刪除所有雲端資料 (危險)</button>
+            
+            <div class="neu-card" style="border-color: var(--danger); height:auto; margin-top:20px;">
+                <button class="neu-btn danger" style="width:100%;" onclick="app.clearAllData()">
+                    <i class="ph ph-trash"></i> 清空所有資料 (雲端)
+                </button>
+            </div>
+
+            <div class="neu-card" style="border: 2px dashed var(--primary-soft); text-align: center; cursor: pointer; height:auto; margin-top:20px;" onclick="app.openBackupModal()">
+                <h3 style="color:var(--primary); margin:0; font-size:1.1rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="ph ph-download-simple"></i> 資料備份與匯入
+                </h3>
             </div>
         </div>
     </main>
 </div>
 
-<div class="fab-scan" onclick="app.openScanner()"><i class="ph ph-scan"></i></div>
+<div class="fab-scan" onclick="app.openScanner()">
+    <i class="ph ph-scan"></i>
+</div>
 
 <div id="modal-scanner" class="modal-overlay">
     <div class="neu-card modal-content" style="text-align:center; height:auto;">
-        <h3>掃描條碼</h3>
-        <div id="reader" style="width:100%; border-radius:12px; overflow:hidden;"></div>
-        <button class="neu-btn danger" onclick="app.closeScanner()" style="margin-top:15px;">關閉</button>
+        <h3 style="color:var(--text-main); margin-top:0;">掃描條碼</h3>
+        <div id="reader" style="width: 100%; border-radius:12px; overflow:hidden;"></div>
+        <p style="font-size:0.85rem; color:var(--text-light); margin:15px 0;">對準包裝上的國際條碼<br>系統將自動搜尋代號</p>
+        <button class="neu-btn danger" onclick="app.closeScanner()">關閉</button>
     </div>
 </div>
 
 <div id="modal-item" class="modal-overlay">
     <div class="neu-card modal-content">
-        <h2 id="modal-item-title" style="color:var(--primary); margin-top:0;">新增包裝</h2>
+        <h2 id="modal-item-title" style="color: var(--primary); margin-top:0;">新增包裝</h2>
         <form onsubmit="app.saveItem(event)">
             <input type="hidden" id="item-id">
-            <label>圖片 (點擊上傳)</label>
+            
+            <label>包裝圖片 (點擊上傳)</label>
             <div class="image-preview-box" onclick="document.getElementById('item-image-file').click()">
-                <div class="placeholder" style="text-align:center; color:var(--text-light)"><i class="ph ph-camera" style="font-size:2rem;"></i><br><span>選擇照片</span></div>
+                <div class="placeholder" style="text-align:center; color:var(--text-light)">
+                    <i class="ph ph-camera" style="font-size:2rem; margin-bottom:5px;"></i><br>
+                    <span>選擇照片</span>
+                </div>
                 <img id="item-image-preview" src="">
                 <input type="file" id="item-image-file" accept="image/*" onchange="app.handleImageUpload(this)">
-                <input type="hidden" id="item-image-base64">
-            </div>
-            <label>名稱 *</label><input type="text" id="item-name" class="neu-input" required>
-            <label>條碼</label><input type="text" id="item-code" class="neu-input" placeholder="掃描用">
+                <input type="hidden" id="item-image-base64"> </div>
+            
+            <label>名稱 *</label>
+            <input type="text" id="item-name" class="neu-input" required>
+            <label>條碼 / 代號</label>
+            <input type="text" id="item-code" class="neu-input" placeholder="掃描時辨識用">
+            
             <div class="form-grid">
-                <div><label>大類 *</label><select id="item-main-cat" class="neu-select" required onchange="app.renderSubCatOptionsInModal()"></select></div>
-                <div><label>小類</label><select id="item-sub-cat" class="neu-select"></select></div>
+                <div>
+                    <label>大類 *</label>
+                    <select id="item-main-cat" class="neu-select" required onchange="app.renderSubCatOptionsInModal()"></select>
+                </div>
+                <div>
+                    <label>小類</label>
+                    <select id="item-sub-cat" class="neu-select"></select>
+                </div>
             </div>
             <div class="form-grid">
                 <div><label>安全庫存</label><input type="number" id="item-safety" class="neu-input" value="0"></div>
                 <div><label>標籤</label><input type="text" id="item-tags" class="neu-input"></div>
             </div>
-            <label>備註</label><textarea id="item-notes" class="neu-textarea" rows="2"></textarea>
+            <label>備註</label>
+            <textarea id="item-notes" class="neu-textarea" rows="2"></textarea>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
                 <button type="button" class="neu-btn" onclick="app.closeModals()">取消</button>
                 <button type="submit" class="neu-btn success">儲存 (同步雲端)</button>
@@ -307,21 +554,60 @@
 
 <div id="modal-detail" class="modal-overlay">
     <div class="neu-card modal-content">
-        <div style="display:flex; justify-content:space-between;"><h2 id="detail-title" style="color:var(--primary); margin:0;"></h2><button class="neu-btn sm" onclick="app.closeModals()" style="background:none;">✕</button></div>
-        <div id="detail-image-container" style="text-align:center; margin:15px 0; display:none;"><img id="detail-image" src="" style="max-width:100%; max-height:250px; border-radius:12px;"></div>
-        <div id="detail-stats" style="margin-bottom:20px; padding:15px; background:var(--bg-app); border-radius:var(--radius-md); font-size:0.9rem;"></div>
-        <h3>近期紀錄</h3><div id="detail-ledger" style="max-height:250px; overflow-y:auto;"></div>
-        <div style="display:flex; justify-content:space-between; margin-top:20px; padding-top:15px; border-top:1px solid #eee;">
-             <button class="neu-btn danger sm" id="btn-delete-item"><i class="ph ph-trash"></i> 刪除</button>
-             <button class="neu-btn sm" id="btn-edit-item" style="background:var(--primary-soft);"><i class="ph ph-pencil-simple"></i> 修改</button>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <h2 id="detail-title" style="color:var(--primary); margin-top:0; margin-bottom:10px;"></h2>
+            <button class="neu-btn sm" onclick="app.closeModals()" style="background:none; color:var(--text-light); padding:0;">✕</button>
+        </div>
+        
+        <div id="detail-image-container" style="text-align:center; margin-bottom:15px; display:none;">
+            <img id="detail-image" src="" style="max-width:100%; max-height:250px; border-radius:12px; border:1px solid #eee;">
+        </div>
+
+        <div id="detail-stats" style="margin-bottom:20px; padding:15px; background:var(--bg-app); border-radius:var(--radius-md); font-size: 0.9rem; line-height:1.6;"></div>
+        <h3 style="font-size:1rem; color:var(--text-light)">近期紀錄</h3>
+        <div id="detail-ledger" style="max-height: 250px; overflow-y: auto;"></div>
+        
+        <div style="display:flex; justify-content:space-between; margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
+             <button class="neu-btn danger sm" id="btn-delete-item" onclick="">
+                <i class="ph ph-trash"></i> 刪除
+             </button>
+             <div style="display:flex; gap:10px;">
+                 <button class="neu-btn sm" style="background:var(--primary-soft); color:var(--text-main)" id="btn-edit-item" onclick="">
+                    <i class="ph ph-pencil-simple"></i> 修改
+                 </button>
+                 <button class="neu-btn sm success" onclick="app.closeModals()">
+                    關閉
+                 </button>
+             </div>
         </div>
     </div>
 </div>
 
+<div id="modal-backup" class="modal-overlay">
+    <div class="neu-card modal-content" style="height:auto;">
+        <h2 style="color:var(--primary); margin-top:0;">資料管理</h2>
+        <div style="display:flex; flex-direction:column; gap:15px;">
+            <button class="neu-btn" onclick="app.exportData()">
+                <i class="ph ph-export"></i> 匯出備份 (JSON)
+            </button>
+            <div style="border-top:1px solid var(--border-subtle);"></div>
+            <label>匯入備份 (將覆蓋現有資料)</label>
+            <input type="file" id="import-file" class="neu-input">
+            <button class="neu-btn warning" onclick="app.importData()">
+                <i class="ph ph-upload"></i> 確認匯入
+            </button>
+        </div>
+        <button class="neu-btn" style="margin-top:20px; width:100%;" onclick="app.closeModals()">關閉</button>
+    </div>
+</div>
+
 <script type="module">
+  // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-analytics.js";
   import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 
+  // Your web app's Firebase configuration
   const firebaseConfig = {
     apiKey: "AIzaSyB8QiVjk-PRxre7xlt389vs0Hf5aBiAXrg",
     authDomain: "my-erp-system-6521c.firebaseapp.com",
@@ -332,31 +618,32 @@
     measurementId: "G-EQDX9HSNMX"
   };
 
+  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
   const db = getFirestore(app);
-  
-  // Bind Firebase functions to window for the main app to use
+
+  // Bind to window for global access
   window.db = db;
   window.doc = doc;
   window.onSnapshot = onSnapshot;
   window.setDoc = setDoc;
   
-  // Signal ready
+  // Dispatch event
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
 
 <script>
     const App = function() {
-        // Default structure
-        this.data = { items: [], movements: [], categories: { main: [], sub: [] } };
-        // We use a single document 'data' in collection 'inventory' to simulate localstorage but in cloud
-        // This is the easiest migration path for the current data structure.
+        // Default structure + appTitle
+        this.data = { appTitle: '倉庫管理 (雲端版)', items: [], movements: [], categories: { main: [], sub: [] } };
+        
         this.docRef = null; 
         this.html5QrcodeScanner = null;
         this.unsubscribe = null;
 
         this.init = () => {
-            // Wait for Firebase module to load
+            // Wait for Firebase
             if (window.db) {
                 this.setupRealtimeSync();
             } else {
@@ -368,41 +655,36 @@
             document.getElementById('move-time').value = now.toISOString().slice(0, 16);
         };
 
-        // --- REAL-TIME SYNC ENGINE ---
+        // --- REAL-TIME SYNC ---
         this.setupRealtimeSync = () => {
-            console.log("Connecting to Firestore...");
+            console.log("Connecting to Cloud...");
             this.docRef = window.doc(window.db, "inventory", "main_data");
 
-            // Listening to changes (Download)
+            // Listen
             this.unsubscribe = window.onSnapshot(this.docRef, (docSnap) => {
                 document.getElementById('loading-overlay').style.opacity = '0';
                 setTimeout(()=>document.getElementById('loading-overlay').style.display='none', 300);
 
                 if (docSnap.exists()) {
-                    console.log("Data received from Cloud");
                     this.data = docSnap.data();
                     this.renderAll();
                 } else {
-                    console.log("No cloud data found. Creating init data...");
-                    this.seedDemoData(); // First time use
+                    this.seedDemoData();
                 }
             }, (error) => {
-                alert("連線錯誤：無法讀取資料庫。\n請確認您已在 Firebase Console 開啟 Firestore 並設定測試模式權限。");
+                alert("連線錯誤：請確認 Firebase Firestore 權限。");
                 document.getElementById('loading-overlay').style.display='none';
             });
         };
 
-        // Upload to Cloud (Replaces localStorage.setItem)
+        // Upload
         this.saveData = async () => {
             try {
                 await window.setDoc(this.docRef, this.data);
-                console.log("Synced to Cloud");
             } catch (e) {
-                console.error("Sync Error", e);
                 alert("儲存失敗："+e.message);
             }
         };
-        // -----------------------------
 
         this.seedDemoData = () => {
             const teaId = 'c1', boxId = 'c2';
@@ -412,10 +694,10 @@
                 { id: 'i1', name: '紅玉四兩盒', code: '4711234567890', mainCatId: teaId, subCatId: 's1', tags: '熱銷', safetyStock: 30, notes: '', image: '' }
             ];
             this.data.movements = [{ id: 'm1', itemId: 'i1', type: 'in', qty: 100, time: new Date().toISOString(), handler: '初始', reason: '', isVoid: false }];
-            this.saveData(); // Sync up
+            this.saveData(); 
         };
 
-        // Calculations
+        // --- Data Logic ---
         this.getStock = (itemId) => {
             return this.data.movements.reduce((acc, m) => {
                 if (m.itemId !== itemId || m.isVoid) return acc;
@@ -426,36 +708,20 @@
         this.getMainCatName = (id) => (this.data.categories.main.find(x=>x.id==id) || {}).name || '未分類';
         this.getSubCatName = (id) => (this.data.categories.sub.find(x=>x.id==id) || {}).name || '';
 
-        // Image Handler
-        this.handleImageUpload = (input) => {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (e) => {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_W = 600; // Compress logic
-                    const scale = MAX_W / img.width;
-                    const w = (img.width > MAX_W) ? MAX_W : img.width;
-                    const h = (img.width > MAX_W) ? img.height * scale : img.height;
-                    canvas.width = w; canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, w, h);
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6); // Quality 0.6
-                    document.getElementById('item-image-preview').src = dataUrl;
-                    document.querySelector('.image-preview-box').classList.add('has-image');
-                    document.getElementById('item-image-base64').value = dataUrl;
-                };
-            };
+        // --- View Logic ---
+        this.renderAll = () => {
+            // Update Title
+            const title = this.data.appTitle || '倉庫管理 (雲端版)';
+            document.title = title;
+            document.getElementById('header-app-title').innerHTML = `<i class="ph ph-cloud-check"></i> ${title}`;
+            document.getElementById('sidebar-app-title').innerHTML = `📦 ${title}`;
+            
+            this.renderInventory();
+            this.renderMoveSelect();
+            this.renderHistory();
+            this.renderSettings();
         };
 
-        // Navigation
-        this.renderAll = () => {
-            this.renderInventory(); this.renderMoveSelect(); this.renderHistory(); this.renderSettings();
-        };
         this.switchTab = (tabId, btn) => {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
@@ -465,7 +731,7 @@
             window.scrollTo(0,0);
         };
 
-        // Inventory Render
+        // ... Inventory Render ...
         this.renderInventory = () => {
             const container = document.getElementById('inventory-list-container');
             const search = document.getElementById('search-input').value.toLowerCase();
@@ -511,7 +777,49 @@
             });
         };
 
-        // Movement View
+        // ... Settings Render (Updated) ...
+        this.renderSettings = () => {
+            // Title Setting
+            document.getElementById('setting-app-title').value = this.data.appTitle || '';
+
+            // Categories
+            document.getElementById('settings-main-cat-list').innerHTML = this.data.categories.main.map(c=>`<div class="edit-chip"><span class="edit-chip-name" onclick="app.editMainCat('${c.id}')">${c.name}</span><span class="edit-chip-del" onclick="app.delMain('${c.id}')">✕</span></div>`).join('');
+            const pSel = document.getElementById('settings-sub-cat-parent'); 
+            const currentP = pSel.value;
+            pSel.innerHTML = '<option value="">先選大類...</option>'+this.data.categories.main.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+            pSel.value = currentP; // keep selection
+            
+            document.getElementById('filter-main-cat').innerHTML = '<option value="">所有大類</option>'+this.data.categories.main.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+            
+            this.renderSubSettings();
+        };
+        
+        // Save App Title
+        this.saveAppTitle = () => {
+            const t = document.getElementById('setting-app-title').value;
+            if(t) {
+                this.data.appTitle = t;
+                this.saveData();
+                alert('系統名稱已更新！');
+            }
+        };
+
+        // ... Other existing functions ...
+        this.renderSubSettings = () => {
+            const pid = document.getElementById('settings-sub-cat-parent').value;
+            const subs = this.data.categories.sub.filter(s=>s.parentId===pid);
+            document.getElementById('settings-sub-cat-list').innerHTML = subs.map(s=>`<div class="edit-chip"><span class="edit-chip-name" onclick="app.editSubCat('${s.id}')">${s.name}</span><span class="edit-chip-del" onclick="app.delSub('${s.id}')">✕</span></div>`).join('');
+        };
+        document.getElementById('settings-sub-cat-parent').onchange = () => app.renderSubSettings();
+        
+        this.addMainCat=()=>{const n=document.getElementById('new-main-cat').value; if(n){this.data.categories.main.push({id:'mc'+Date.now(),name:n}); document.getElementById('new-main-cat').value=''; this.saveData();}};
+        this.editMainCat=(id)=>{const c=this.data.categories.main.find(x=>x.id==id);const n=prompt('修改',c.name);if(n){c.name=n;this.saveData();}};
+        this.delMain=(id)=>{if(confirm('確定？')){this.data.categories.main=this.data.categories.main.filter(x=>x.id!==id);this.saveData();}};
+        this.addSubCat=()=>{const p=document.getElementById('settings-sub-cat-parent').value, n=document.getElementById('new-sub-cat').value; if(p&&n){this.data.categories.sub.push({id:'sc'+Date.now(),parentId:p,name:n}); document.getElementById('new-sub-cat').value=''; this.saveData();}};
+        this.editSubCat=(id)=>{const c=this.data.categories.sub.find(x=>x.id==id);const n=prompt('修改',c.name);if(n){c.name=n;this.saveData();}};
+        this.delSub=(id)=>{if(confirm('確定？')){this.data.categories.sub=this.data.categories.sub.filter(x=>x.id!==id);this.saveData();}};
+        this.clearAllData=()=>{if(confirm('警告：這將清空雲端資料庫！')){this.data={appTitle:this.data.appTitle, items:[],movements:[],categories:{main:[],sub:[]}};this.saveData();}};
+
         this.setMoveType = (t) => {
             document.getElementById('move-type').value = t;
             document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -552,63 +860,25 @@
             document.getElementById('move-time').value = now.toISOString().slice(0, 16);
         };
 
-        // History
-        this.renderHistory = () => {
-            const container = document.getElementById('history-list');
-            const start = document.getElementById('hist-start').value, end = document.getElementById('hist-end').value, search = document.getElementById('hist-search').value.toLowerCase();
-            container.innerHTML = '';
-            const filtered = this.data.movements.filter(m => {
-                if (start && m.time.substring(0,10) < start) return false;
-                if (end && m.time.substring(0,10) > end) return false;
-                const item = this.getItem(m.itemId);
-                return !search || (m.reason+m.handler+(item?item.name:'')).toLowerCase().includes(search);
-            }).sort((a,b) => new Date(b.time) - new Date(a.time));
-            if(filtered.length === 0) container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light)">無紀錄</div>';
-            filtered.forEach(m => {
-                const item = this.getItem(m.itemId);
-                let color = 'var(--text-main)', icon = 'ph-info', sign = '';
-                if(m.type==='in'){color='var(--success)'; icon='ph-arrow-down'; sign='+';}
-                if(m.type==='out'){color='var(--danger)'; icon='ph-arrow-up'; sign='-';}
-                if(m.type==='adj'){color='var(--warning)'; icon='ph-wrench'; sign=(m.qty>=0?'+':'');}
-                container.innerHTML += `
-                <div class="neu-card history-item type-${m.type} ${m.isVoid?'voided':''}" style="height:auto;margin-bottom:15px;">
-                    <div style="display:flex;justify-content:space-between">
-                        <div>
-                            <b>${item?item.name:'?'}</b> ${m.isVoid?'<span class="badge void">撤銷</span>':''}
-                            <div style="font-size:0.8rem;color:var(--text-light);">${m.time.substring(5,16).replace('T',' ')} | ${m.handler||'-'}</div>
-                            <div style="font-size:0.9rem;">${m.reason||''}</div>
-                        </div>
-                        <div style="text-align:right">
-                            <div style="font-size:1.3rem;font-weight:bold;color:${color}"><i class="ph ${icon}"></i> ${sign}${Math.abs(m.qty)}</div>
-                            ${!m.isVoid ? `<button class="neu-btn sm danger" style="margin-top:5px;" onclick="app.voidMove('${m.id}')">撤銷</button>`:''}
-                        </div>
-                    </div>
-                </div>`;
-            });
-        };
-        this.voidMove = (id) => { if(confirm('確定撤銷？')) { const m=this.data.movements.find(x=>x.id===id); if(m){m.isVoid=true; this.saveData();} } };
-
-        // Settings & CRUD
-        this.renderSettings = () => {
-            document.getElementById('settings-main-cat-list').innerHTML = this.data.categories.main.map(c=>`<div class="edit-chip"><span class="edit-chip-name" onclick="app.editMainCat('${c.id}')">${c.name}</span><span class="edit-chip-del" onclick="app.delMain('${c.id}')">✕</span></div>`).join('');
-            const pSel = document.getElementById('settings-sub-cat-parent'); pSel.innerHTML = '<option value="">先選大類...</option>'+this.data.categories.main.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-            document.getElementById('filter-main-cat').innerHTML = '<option value="">所有大類</option>'+this.data.categories.main.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-            this.renderSubSettings();
-        };
-        this.renderSubSettings = () => {
-            const pid = document.getElementById('settings-sub-cat-parent').value;
-            const subs = this.data.categories.sub.filter(s=>s.parentId===pid);
-            document.getElementById('settings-sub-cat-list').innerHTML = subs.map(s=>`<div class="edit-chip"><span class="edit-chip-name" onclick="app.editSubCat('${s.id}')">${s.name}</span><span class="edit-chip-del" onclick="app.delSub('${s.id}')">✕</span></div>`).join('');
-        };
-        document.getElementById('settings-sub-cat-parent').onchange = () => app.renderSubSettings();
+        this.openScanner=()=>{document.getElementById('modal-scanner').classList.add('open');if(!this.html5QrcodeScanner){const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0, videoConstraints: { facingMode: "environment" } }; this.html5QrcodeScanner=new Html5QrcodeScanner("reader",config);this.html5QrcodeScanner.render((txt)=>{const item=this.data.items.find(i=>i.code===txt);if(item){this.closeScanner();this.switchTab('view-movement',document.getElementById('nav-move'));const sel=document.getElementById('move-item-id');sel.value=item.id;this.updateMoveStockHint();setTimeout(()=>{alert(`已掃描：${item.name}\n庫存：${this.getStock(item.id)}`);document.getElementById('move-qty').focus();},300);}else{this.html5QrcodeScanner.pause();alert('找不到條碼：'+txt);this.html5QrcodeScanner.resume();}},(err)=>{});}};
+        this.closeScanner=()=>{document.getElementById('modal-scanner').classList.remove('open');if(this.html5QrcodeScanner){this.html5QrcodeScanner.clear().then(_=>{this.html5QrcodeScanner=null;document.getElementById('reader').innerHTML="";}).catch(e=>{});}};
         
-        this.addMainCat=()=>{const n=document.getElementById('new-main-cat').value; if(n){this.data.categories.main.push({id:'mc'+Date.now(),name:n}); document.getElementById('new-main-cat').value=''; this.saveData();}};
-        this.editMainCat=(id)=>{const c=this.data.categories.main.find(x=>x.id==id);const n=prompt('修改',c.name);if(n){c.name=n;this.saveData();}};
-        this.delMain=(id)=>{if(confirm('確定？')){this.data.categories.main=this.data.categories.main.filter(x=>x.id!==id);this.saveData();}};
-        this.addSubCat=()=>{const p=document.getElementById('settings-sub-cat-parent').value, n=document.getElementById('new-sub-cat').value; if(p&&n){this.data.categories.sub.push({id:'sc'+Date.now(),parentId:p,name:n}); document.getElementById('new-sub-cat').value=''; this.saveData();}};
-        this.editSubCat=(id)=>{const c=this.data.categories.sub.find(x=>x.id==id);const n=prompt('修改',c.name);if(n){c.name=n;this.saveData();}};
-        this.delSub=(id)=>{if(confirm('確定？')){this.data.categories.sub=this.data.categories.sub.filter(x=>x.id!==id);this.saveData();}};
-        this.clearAllData=()=>{if(confirm('警告：這將清空雲端資料庫！')){this.data={items:[],movements:[],categories:{main:[],sub:[]}};this.saveData();}};
+        this.handleImageUpload = (input) => {
+            const file = input.files[0]; if (!file) return;
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                const img = new Image(); img.src = e.target.result;
+                img.onload = () => {
+                    const cvs = document.createElement('canvas'); const mw = 600; const sc = mw/img.width;
+                    const w = (img.width>mw)?mw:img.width; const h = (img.width>mw)?img.height*sc:img.height;
+                    cvs.width=w; cvs.height=h; const ctx=cvs.getContext('2d'); ctx.drawImage(img,0,0,w,h);
+                    const url = cvs.toDataURL('image/jpeg',0.6);
+                    document.getElementById('item-image-preview').src = url;
+                    document.querySelector('.image-preview-box').classList.add('has-image');
+                    document.getElementById('item-image-base64').value = url;
+                };
+            };
+        };
 
         this.openItemModal = (id=null) => {
             document.getElementById('modal-item').classList.add('open');
@@ -652,7 +922,6 @@
                 this.saveData(); this.closeModals();
             }
         };
-
         this.openDetail = (id) => {
             const item = this.getItem(id);
             document.getElementById('modal-detail').classList.add('open');
@@ -670,9 +939,16 @@
             document.getElementById('btn-delete-item').onclick = () => app.deleteItem(id);
             document.getElementById('btn-edit-item').onclick = () => { app.closeModals(); setTimeout(()=>app.openItemModal(id),200); };
         };
-
-        this.openScanner=()=>{document.getElementById('modal-scanner').classList.add('open');if(!this.html5QrcodeScanner){this.html5QrcodeScanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:250,videoConstraints:{facingMode:"environment"}});this.html5QrcodeScanner.render((txt)=>{const item=this.data.items.find(i=>i.code===txt);if(item){this.closeScanner();this.switchTab('view-movement',document.getElementById('nav-move'));const sel=document.getElementById('move-item-id');sel.value=item.id;this.updateMoveStockHint();setTimeout(()=>{alert(`已掃描：${item.name}\n庫存：${this.getStock(item.id)}`);document.getElementById('move-qty').focus();},300);}else{this.html5QrcodeScanner.pause();alert('找不到條碼：'+txt);this.html5QrcodeScanner.resume();}},(err)=>{});}};
-        this.closeScanner=()=>{document.getElementById('modal-scanner').classList.remove('open');if(this.html5QrcodeScanner){this.html5QrcodeScanner.clear().then(_=>{this.html5QrcodeScanner=null;document.getElementById('reader').innerHTML="";}).catch(e=>{});}};
+        this.openBackupModal = () => document.getElementById('modal-backup').classList.add('open');
+        this.exportData = () => {
+            const a = document.createElement('a'); a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.data));
+            a.download = "inventory_backup.json"; a.click();
+        };
+        this.importData = () => {
+            const f = document.getElementById('import-file').files[0]; if(!f) return;
+            const r = new FileReader(); r.onload = e => { if(confirm('覆蓋？')) { this.data = JSON.parse(e.target.result); this.saveData(); }};
+            r.readAsText(f);
+        };
         this.closeModals=()=>{document.querySelectorAll('.modal-overlay').forEach(el=>el.classList.remove('open'));this.closeScanner();};
     };
 

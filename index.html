@@ -145,6 +145,7 @@
 
         .hidden { display: none !important; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(94, 90, 84, 0.6); backdrop-filter: blur(4px); z-index: 200; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.2s; }
         .modal-overlay.open { opacity: 1; visibility: visible; }
@@ -190,11 +191,15 @@
             <div class="neu-card" style="height: auto;">
                 <div style="position: relative;">
                     <i class="ph ph-magnifying-glass" style="position:absolute; left:12px; top:12px; color:var(--text-light)"></i>
-                    <input type="text" id="search-input" class="neu-input" style="padding-left: 36px;" placeholder="搜尋..." oninput="app.renderInventory()">
+                    <input type="text" id="search-input" class="neu-input" style="padding-left: 36px;" placeholder="搜尋名稱、代號..." oninput="app.renderInventory()">
                 </div>
-                <div class="form-grid">
-                    <select id="filter-main-cat" class="neu-select" onchange="app.renderInventory()"></select>
-                    <label class="neu-btn sm" style="justify-content:center; background:white; border:var(--border-subtle); color:var(--text-main); margin:0; height:46px; margin-bottom:12px;">
+                
+                <div class="form-grid-3" style="margin-bottom:12px;">
+                    <select id="filter-main-cat" class="neu-select" style="margin:0;" onchange="app.onMainFilterChange()"></select>
+                    <select id="filter-sub-cat" class="neu-select" style="margin:0;" onchange="app.renderInventory()">
+                        <option value="">所有小類</option>
+                    </select>
+                    <label class="neu-btn sm" style="justify-content:center; background:white; border:var(--border-subtle); color:var(--text-main); margin:0; height:46px; display:flex; align-items:center;">
                         <input type="checkbox" id="filter-low-stock" onchange="app.renderInventory()" style="margin-right:8px;"> 缺貨
                     </label>
                 </div>
@@ -310,7 +315,7 @@
             <label>備註</label><textarea id="item-notes" class="neu-textarea" rows="2"></textarea>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
                 <button type="button" class="neu-btn" onclick="app.closeModals()">取消</button>
-                <button type="submit" class="neu-btn success">儲存 (同步雲端)</button>
+                <button type="submit" class="neu-btn success">儲存</button>
             </div>
         </form>
     </div>
@@ -356,18 +361,14 @@
 
 <script>
     const App = function() {
-        // Init Structure with settings
         this.data = { items: [], movements: [], categories: { main: [], sub: [] }, settings: { appTitle: "倉庫管理 (雲端版)" } };
         this.docRef = null; 
         this.html5QrcodeScanner = null;
         this.unsubscribe = null;
 
         this.init = () => {
-            if (window.db) {
-                this.setupRealtimeSync();
-            } else {
-                window.addEventListener('firebase-ready', () => this.setupRealtimeSync());
-            }
+            if (window.db) { this.setupRealtimeSync(); } 
+            else { window.addEventListener('firebase-ready', () => this.setupRealtimeSync()); }
             const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('move-time').value = now.toISOString().slice(0, 16);
         };
@@ -384,7 +385,6 @@
                 if (docSnap.exists()) {
                     console.log("Data sync");
                     const cloudData = docSnap.data();
-                    // Merge/Repair data structure if fields missing
                     this.data = {
                         items: cloudData.items || [],
                         movements: cloudData.movements || [],
@@ -407,17 +407,12 @@
             catch (e) { alert("儲存失敗："+e.message); }
         };
 
-        // --- NEW: App Title Logic ---
         this.renderAppTitle = () => {
             const title = (this.data.settings && this.data.settings.appTitle) ? this.data.settings.appTitle : "倉庫管理 (雲端版)";
             document.getElementById('header-title-text').textContent = title;
-            document.title = title; // Update Browser Tab
-            
-            // Update Desktop Nav Title if it exists
+            document.title = title;
             const navTitle = document.getElementById('nav-title-text');
             if(navTitle) navTitle.innerHTML = `📦 ${title}`;
-            
-            // Set input value
             document.getElementById('setting-app-title').value = title;
         };
 
@@ -426,12 +421,10 @@
             if(val) {
                 if(!this.data.settings) this.data.settings = {};
                 this.data.settings.appTitle = val;
-                this.saveData(); // Syncs to cloud, triggers onSnapshot on other devices
+                this.saveData();
                 alert("✅ 名稱已更新並同步至所有裝置");
             }
         };
-
-        // -------------------------
 
         this.seedDemoData = () => {
             const teaId = 'c1', boxId = 'c2';
@@ -444,7 +437,6 @@
             this.saveData(); 
         };
 
-        // Calculations
         this.getStock = (itemId) => {
             return this.data.movements.reduce((acc, m) => {
                 if (m.itemId !== itemId || m.isVoid) return acc;
@@ -455,7 +447,6 @@
         this.getMainCatName = (id) => (this.data.categories.main.find(x=>x.id==id) || {}).name || '未分類';
         this.getSubCatName = (id) => (this.data.categories.sub.find(x=>x.id==id) || {}).name || '';
 
-        // Image Handler
         this.handleImageUpload = (input) => {
             const file = input.files[0];
             if (!file) return;
@@ -481,9 +472,8 @@
             };
         };
 
-        // Navigation
         this.renderAll = () => {
-            this.renderAppTitle(); // NEW: Render Title
+            this.renderAppTitle();
             this.renderInventory(); this.renderMoveSelect(); this.renderHistory(); this.renderSettings();
         };
         this.switchTab = (tabId, btn) => {
@@ -495,11 +485,12 @@
             window.scrollTo(0,0);
         };
 
-        // Inventory Render
+        // Inventory
         this.renderInventory = () => {
             const container = document.getElementById('inventory-list-container');
             const search = document.getElementById('search-input').value.toLowerCase();
             const filterMain = document.getElementById('filter-main-cat').value;
+            const filterSub = document.getElementById('filter-sub-cat').value; // Get sub filter
             const onlyLow = document.getElementById('filter-low-stock').checked;
             container.innerHTML = '';
             
@@ -510,9 +501,13 @@
             this.data.items.forEach(item => {
                 const stock = this.getStock(item.id);
                 const isLow = item.safetyStock > 0 && stock <= item.safetyStock;
+                
+                // Filtering Logic
                 if (onlyLow && !isLow) return;
                 if (filterMain && item.mainCatId !== filterMain) return;
+                if (filterSub && item.subCatId !== filterSub) return; // Sub-cat filter check
                 if (search && !(item.name+item.code+item.tags).toLowerCase().includes(search)) return;
+                
                 const k = (item.mainCatId && grouped[item.mainCatId]) ? item.mainCatId : 'uncat';
                 grouped[k].items.push({...item, stock, isLow});
             });
@@ -541,7 +536,21 @@
             });
         };
 
-        // Movement View
+        // NEW Logic for Filter Dependency
+        this.onMainFilterChange = () => {
+            const mainId = document.getElementById('filter-main-cat').value;
+            const subSel = document.getElementById('filter-sub-cat');
+            subSel.innerHTML = '<option value="">所有小類</option>';
+            if(mainId) {
+                const subs = this.data.categories.sub.filter(s => s.parentId === mainId);
+                subs.forEach(s => {
+                    subSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                });
+            }
+            this.renderInventory();
+        };
+
+        // Movement
         this.setMoveType = (t) => {
             document.getElementById('move-type').value = t;
             document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
@@ -621,8 +630,19 @@
         // Settings & CRUD
         this.renderSettings = () => {
             document.getElementById('settings-main-cat-list').innerHTML = this.data.categories.main.map(c=>`<div class="edit-chip"><span class="edit-chip-name" onclick="app.editMainCat('${c.id}')">${c.name}</span><span class="edit-chip-del" onclick="app.delMain('${c.id}')">✕</span></div>`).join('');
-            const pSel = document.getElementById('settings-sub-cat-parent'); pSel.innerHTML = '<option value="">先選大類...</option>'+this.data.categories.main.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-            document.getElementById('filter-main-cat').innerHTML = '<option value="">所有大類</option>'+this.data.categories.main.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+            
+            // Populate Sub Cat Settings
+            const pSel = document.getElementById('settings-sub-cat-parent'); 
+            const pVal = pSel.value;
+            pSel.innerHTML = '<option value="">先選大類...</option>'+this.data.categories.main.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+            pSel.value = pVal;
+
+            // Populate Inventory Main Filter
+            const fSel = document.getElementById('filter-main-cat');
+            const fVal = fSel.value;
+            fSel.innerHTML = '<option value="">所有大類</option>'+this.data.categories.main.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+            fSel.value = fVal;
+
             this.renderSubSettings();
         };
         this.renderSubSettings = () => {
@@ -638,7 +658,7 @@
         this.addSubCat=()=>{const p=document.getElementById('settings-sub-cat-parent').value, n=document.getElementById('new-sub-cat').value; if(p&&n){this.data.categories.sub.push({id:'sc'+Date.now(),parentId:p,name:n}); document.getElementById('new-sub-cat').value=''; this.saveData();}};
         this.editSubCat=(id)=>{const c=this.data.categories.sub.find(x=>x.id==id);const n=prompt('修改',c.name);if(n){c.name=n;this.saveData();}};
         this.delSub=(id)=>{if(confirm('確定？')){this.data.categories.sub=this.data.categories.sub.filter(x=>x.id!==id);this.saveData();}};
-        this.clearAllData=()=>{if(confirm('警告：這將清空雲端資料庫！')){this.data={items:[],movements:[],categories:{main:[],sub:[]},settings:{appTitle:"倉庫管理"}};this.saveData();}};
+        this.clearAllData=()=>{if(confirm('警告：這將清空雲端資料庫！')){this.data={items:[],movements:[],categories:{main:[],sub:[]},settings:{appTitle:"倉庫管理 (雲端版)"}};this.saveData();}};
 
         this.openItemModal = (id=null) => {
             document.getElementById('modal-item').classList.add('open');

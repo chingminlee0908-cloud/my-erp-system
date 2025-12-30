@@ -10,9 +10,9 @@
 
     <style>
         :root {
-            --bg-app: #F2EFE9;     
-            --bg-card: #FFFFFF;    
-            --text-main: #5E5A54;  
+            --bg-app: #F2EFE9;      
+            --bg-card: #FFFFFF;     
+            --text-main: #5E5A54;   
             --text-light: #9E9991; 
             --primary: #8F9EAC;
             --primary-soft: #CFD8DC; 
@@ -74,11 +74,20 @@
         .neu-btn.warning { background: rgba(199, 178, 133, 0.15); color: var(--warning); }
         .neu-btn.sm { padding: 6px 14px; font-size: 0.85rem; }
         
-        .neu-input, .neu-select, .neu-textarea {
+        /* 固定高度以確保對齊 */
+        .neu-input, .neu-select {
+            width: 100%; background: #FCFAF8; border: 1px solid #DEDAD4;
+            border-radius: var(--radius-md); padding: 0 16px; font-size: 1rem;
+            outline: none; margin-bottom: 12px;
+            height: 48px; 
+            line-height: 48px;
+        }
+        .neu-textarea {
             width: 100%; background: #FCFAF8; border: 1px solid #DEDAD4;
             border-radius: var(--radius-md); padding: 12px 16px; font-size: 1rem;
             outline: none; margin-bottom: 12px;
         }
+        
         .neu-input:focus { border-color: var(--primary); background: white; }
         label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
 
@@ -199,7 +208,7 @@
                     <select id="filter-sub-cat" class="neu-select" style="margin:0;" onchange="app.renderInventory()">
                         <option value="">所有小類</option>
                     </select>
-                    <label class="neu-btn sm" style="justify-content:center; background:white; border:var(--border-subtle); color:var(--text-main); margin:0; height:46px; display:flex; align-items:center;">
+                    <label class="neu-btn sm" style="justify-content:center; background:white; border:var(--border-subtle); color:var(--text-main); margin:0; height:48px; display:flex; align-items:center;">
                         <input type="checkbox" id="filter-low-stock" onchange="app.renderInventory()" style="margin-right:8px;"> 缺貨
                     </label>
                 </div>
@@ -221,15 +230,34 @@
                         <button type="button" class="neu-btn type-btn" data-type="adj" onclick="app.setMoveType('adj')">盤點</button>
                     </div>
                     <input type="hidden" id="move-type" value="in">
+                    
+                    <div class="form-grid">
+                        <div>
+                            <label>篩選大類</label>
+                            <select id="move-filter-main-cat" class="neu-select" onchange="app.onMoveMainFilterChange()">
+                                <option value="">全部大類</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>篩選小類</label>
+                            <select id="move-filter-sub-cat" class="neu-select" onchange="app.renderMoveSelect()">
+                                <option value="">全部小類</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <label>包裝盒</label>
                     <select id="move-item-id" class="neu-select" required onchange="app.updateMoveStockHint()"><option value="">選擇...</option></select>
                     <div id="move-stock-hint" style="font-size:0.85rem; color:var(--primary); text-align:right; margin-bottom:12px;"></div>
+                    
                     <label id="lbl-qty">數量</label>
-                    <input type="number" id="move-qty" class="neu-input" min="0" required placeholder="輸入整數">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="move-qty" class="neu-input" required placeholder="輸入整數" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+                    
                     <div class="form-grid">
                         <div><label>時間</label><input type="datetime-local" id="move-time" class="neu-input" required></div>
                         <div><label>經手人</label><input type="text" id="move-handler" class="neu-input"></div>
                     </div>
+                    
                     <label>備註</label>
                     <input type="text" id="move-reason" class="neu-input" placeholder="例：採購...">
                     <button type="submit" class="neu-btn success" style="width:100%; margin-top:15px; padding:12px;">確認送出</button>
@@ -259,6 +287,16 @@
                         <button class="neu-btn success" onclick="app.saveAppTitle()"><i class="ph ph-floppy-disk"></i></button>
                     </div>
                     <p style="font-size:0.8rem; color:var(--text-light); margin-top:5px;">修改後，所有同步裝置將立即更新。</p>
+                </div>
+                
+                <div class="neu-card" style="background:#F8F9FA; border:none; padding:15px; margin-bottom:15px;">
+                    <h3 style="margin:0 0 10px 0; font-size:1rem;">資料備份</h3>
+                    <div style="display:flex; gap:10px;">
+                        <button class="neu-btn" onclick="app.exportData()" style="flex:1;"><i class="ph ph-download-simple"></i> 匯出備份</button>
+                        <button class="neu-btn" onclick="document.getElementById('file-import').click()" style="flex:1;"><i class="ph ph-upload-simple"></i> 匯入備份</button>
+                        <input type="file" id="file-import" accept=".json" style="display:none" onchange="app.importData(this)">
+                    </div>
+                    <p style="font-size:0.8rem; color:var(--text-light); margin-top:5px;">匯出可保存目前雲端所有資料；匯入將覆蓋現有資料。</p>
                 </div>
 
                 <div class="neu-card" style="background:#F8F9FA; border:none; padding:15px; margin-bottom:15px;">
@@ -309,7 +347,7 @@
                 <div><label>小類</label><select id="item-sub-cat" class="neu-select"></select></div>
             </div>
             <div class="form-grid">
-                <div><label>安全庫存</label><input type="number" id="item-safety" class="neu-input" value="0"></div>
+                <div><label>安全庫存</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="item-safety" class="neu-input" value="0" oninput="this.value = this.value.replace(/[^0-9]/g, '');"></div>
                 <div><label>標籤</label><input type="text" id="item-tags" class="neu-input"></div>
             </div>
             <label>備註</label><textarea id="item-notes" class="neu-textarea" rows="2"></textarea>
@@ -407,6 +445,34 @@
             catch (e) { alert("儲存失敗："+e.message); }
         };
 
+        // --- EXPORT / IMPORT FUNCTIONS ---
+        this.exportData = () => {
+            const dataStr = JSON.stringify(this.data);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = 'warehouse_backup_'+new Date().toISOString().slice(0,10)+'.json';
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        };
+
+        this.importData = (input) => {
+            const file = input.files[0];
+            if(!file) return;
+            if(!confirm("⚠️ 警告：匯入將會完全覆蓋目前的雲端資料！\n\n確定要繼續嗎？")) { input.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const loadedData = JSON.parse(e.target.result);
+                    if(loadedData.items && loadedData.movements && loadedData.categories) {
+                        this.data = loadedData; this.saveData(); alert("✅ 匯入成功！頁面將重新整理。"); location.reload();
+                    } else { alert("❌ 檔案格式錯誤：缺少必要資料欄位。"); }
+                } catch(err) { alert("❌ 讀取失敗：" + err.message); }
+                input.value = '';
+            };
+            reader.readAsText(file);
+        };
+
         this.renderAppTitle = () => {
             const title = (this.data.settings && this.data.settings.appTitle) ? this.data.settings.appTitle : "倉庫管理 (雲端版)";
             document.getElementById('header-title-text').textContent = title;
@@ -474,7 +540,11 @@
 
         this.renderAll = () => {
             this.renderAppTitle();
-            this.renderInventory(); this.renderMoveSelect(); this.renderHistory(); this.renderSettings();
+            this.renderInventory(); 
+            this.renderMoveFilterOptions(); // 初始化移動頁面篩選
+            this.renderMoveSelect(); 
+            this.renderHistory(); 
+            this.renderSettings();
         };
         this.switchTab = (tabId, btn) => {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
@@ -490,7 +560,7 @@
             const container = document.getElementById('inventory-list-container');
             const search = document.getElementById('search-input').value.toLowerCase();
             const filterMain = document.getElementById('filter-main-cat').value;
-            const filterSub = document.getElementById('filter-sub-cat').value; // Get sub filter
+            const filterSub = document.getElementById('filter-sub-cat').value; 
             const onlyLow = document.getElementById('filter-low-stock').checked;
             container.innerHTML = '';
             
@@ -502,10 +572,9 @@
                 const stock = this.getStock(item.id);
                 const isLow = item.safetyStock > 0 && stock <= item.safetyStock;
                 
-                // Filtering Logic
                 if (onlyLow && !isLow) return;
                 if (filterMain && item.mainCatId !== filterMain) return;
-                if (filterSub && item.subCatId !== filterSub) return; // Sub-cat filter check
+                if (filterSub && item.subCatId !== filterSub) return;
                 if (search && !(item.name+item.code+item.tags).toLowerCase().includes(search)) return;
                 
                 const k = (item.mainCatId && grouped[item.mainCatId]) ? item.mainCatId : 'uncat';
@@ -536,7 +605,6 @@
             });
         };
 
-        // NEW Logic for Filter Dependency
         this.onMainFilterChange = () => {
             const mainId = document.getElementById('filter-main-cat').value;
             const subSel = document.getElementById('filter-sub-cat');
@@ -559,13 +627,63 @@
             if(t==='adj') { qtyLabel.innerHTML="盤點後正確數量"; qtyLabel.style.color="var(--warning)"; } 
             else { qtyLabel.innerHTML="數量"; qtyLabel.style.color="var(--text-main)"; }
         };
-        this.renderMoveSelect = () => {
-            const sel = document.getElementById('move-item-id');
-            const curr = sel.value; sel.innerHTML = '<option value="">請選擇...</option>';
-            this.data.items.sort((a,b) => (this.getMainCatName(a.mainCatId)+a.name).localeCompare(this.getMainCatName(b.mainCatId)+b.name))
-                .forEach(i => sel.innerHTML += `<option value="${i.id}" data-stock="${this.getStock(i.id)}">[${this.getMainCatName(i.mainCatId)}] ${i.name}</option>`);
-            sel.value = curr; 
+
+        // 新增：渲染移動頁面的大類篩選器
+        this.renderMoveFilterOptions = () => {
+            const sel = document.getElementById('move-filter-main-cat');
+            const curr = sel.value;
+            sel.innerHTML = '<option value="">全部大類</option>';
+            this.data.categories.main.forEach(c => {
+                sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            });
+            sel.value = curr;
         };
+
+        // 新增：當大類改變時，更新小類選單
+        this.onMoveMainFilterChange = () => {
+            const mainId = document.getElementById('move-filter-main-cat').value;
+            const subSel = document.getElementById('move-filter-sub-cat');
+            subSel.innerHTML = '<option value="">全部小類</option>';
+
+            if (mainId) {
+                const subs = this.data.categories.sub.filter(s => s.parentId === mainId);
+                subs.forEach(s => {
+                    subSel.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+                });
+            }
+            // 重置後重新渲染產品
+            this.renderMoveSelect();
+        };
+
+        // 修改：根據雙重篩選器渲染產品列表
+        this.renderMoveSelect = () => {
+            const filterMainId = document.getElementById('move-filter-main-cat').value;
+            const filterSubId = document.getElementById('move-filter-sub-cat').value;
+            const sel = document.getElementById('move-item-id');
+            const curr = sel.value; 
+            sel.innerHTML = '<option value="">請選擇...</option>';
+            
+            let items = this.data.items;
+            
+            // 篩選邏輯
+            if(filterMainId) {
+                items = items.filter(i => i.mainCatId === filterMainId);
+            }
+            if(filterSubId) {
+                items = items.filter(i => i.subCatId === filterSubId);
+            }
+
+            items.sort((a,b) => (this.getMainCatName(a.mainCatId)+a.name).localeCompare(this.getMainCatName(b.mainCatId)+b.name))
+                .forEach(i => sel.innerHTML += `<option value="${i.id}" data-stock="${this.getStock(i.id)}">[${this.getMainCatName(i.mainCatId)}] ${i.name}</option>`);
+            
+            if(Array.from(sel.options).some(o => o.value === curr)) {
+                sel.value = curr;
+            } else {
+                sel.value = "";
+                this.updateMoveStockHint();
+            }
+        };
+
         this.updateMoveStockHint = () => {
             const opt = document.getElementById('move-item-id').selectedOptions[0];
             document.getElementById('move-stock-hint').textContent = opt && opt.value ? `庫存: ${opt.dataset.stock}` : '';
@@ -574,10 +692,13 @@
             e.preventDefault();
             const type = document.getElementById('move-type').value;
             const itemId = document.getElementById('move-item-id').value;
-            const qty = parseInt(document.getElementById('move-qty').value);
+            const qtyVal = document.getElementById('move-qty').value;
+            const qty = parseInt(qtyVal);
             const stock = this.getStock(itemId);
             const reason = document.getElementById('move-reason').value;
+            
             if (!itemId || isNaN(qty) || qty < 0) return alert('請填寫正確');
+            
             let finalQty = qty, finalReason = reason;
             if (type === 'out' && stock < qty) return alert('庫存不足');
             if (type === 'adj') {
@@ -589,6 +710,10 @@
             this.saveData(); alert('已儲存'); e.target.reset(); this.setMoveType('in');
             const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('move-time').value = now.toISOString().slice(0, 16);
+            
+            // 重置篩選（可選，這裡保留以方便連續操作同類產品）
+            // this.renderMoveFilterOptions();
+            // this.onMoveMainFilterChange();
         };
 
         // History

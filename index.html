@@ -92,14 +92,7 @@
         label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
 
         /* --- Images --- */
-        .image-preview-box {
-            width: 100%; height: 180px; border: 2px dashed var(--primary-soft);
-            border-radius: var(--radius-md); display: flex; justify-content: center; align-items: center;
-            background: #fdfdfd; margin-bottom: 15px; position: relative; overflow: hidden; cursor: pointer;
-        }
-        .image-preview-box img { width: 100%; height: 100%; object-fit: contain; display: none; }
-        .image-preview-box.has-image img { display: block; }
-        .image-preview-box.has-image .placeholder { display: none; }
+        /* 新增：統一的圖片顯示區塊樣式 */
         .item-thumb { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-subtle); flex-shrink: 0; }
         .item-thumb-placeholder { width: 60px; height: 60px; border-radius: 8px; background: #eee; display:flex; align-items:center; justify-content:center; color:#aaa; font-size:1.5rem; flex-shrink: 0; }
 
@@ -333,13 +326,16 @@
         <h2 id="modal-item-title" style="color:var(--primary); margin-top:0;">新增包裝</h2>
         <form onsubmit="app.saveItem(event)">
             <input type="hidden" id="item-id">
-            <label>圖片 (點擊上傳)</label>
-            <div class="image-preview-box" onclick="document.getElementById('item-image-file').click()">
-                <div class="placeholder" style="text-align:center; color:var(--text-light)"><i class="ph ph-camera" style="font-size:2rem;"></i><br><span>選擇照片</span></div>
-                <img id="item-image-preview" src="">
-                <input type="file" id="item-image-file" accept="image/*" onchange="app.handleImageUpload(this)">
-                <input type="hidden" id="item-image-base64">
+            
+            <label>圖片連結 (Google Drive 或其他)</label>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                <input type="text" id="item-image-link" class="neu-input" placeholder="請貼上連結..." style="margin-bottom:0;" onchange="app.previewImageLink()">
+                <button type="button" class="neu-btn" onclick="app.previewImageLink()"><i class="ph ph-eye"></i></button>
             </div>
+            <div id="image-preview-wrapper" style="text-align:center; display:none; margin-bottom:15px;">
+                <img id="item-image-preview" src="" style="max-height:200px; border-radius:12px; border:1px solid #ccc;" referrerpolicy="no-referrer">
+            </div>
+
             <label>名稱 *</label><input type="text" id="item-name" class="neu-input" required>
             <label>條碼</label><input type="text" id="item-code" class="neu-input" placeholder="掃描用">
             <div class="form-grid">
@@ -362,7 +358,9 @@
 <div id="modal-detail" class="modal-overlay">
     <div class="neu-card modal-content">
         <div style="display:flex; justify-content:space-between;"><h2 id="detail-title" style="color:var(--primary); margin:0;"></h2><button class="neu-btn sm" onclick="app.closeModals()" style="background:none;">✕</button></div>
-        <div id="detail-image-container" style="text-align:center; margin:15px 0; display:none;"><img id="detail-image" src="" style="max-width:100%; max-height:250px; border-radius:12px;"></div>
+        <div id="detail-image-container" style="text-align:center; margin:15px 0; display:none;">
+            <img id="detail-image" src="" style="max-width:100%; max-height:250px; border-radius:12px;" referrerpolicy="no-referrer">
+        </div>
         <div id="detail-stats" style="margin-bottom:20px; padding:15px; background:var(--bg-app); border-radius:var(--radius-md); font-size:0.9rem;"></div>
         <h3>近期紀錄</h3><div id="detail-ledger" style="max-height:250px; overflow-y:auto;"></div>
         <div style="display:flex; justify-content:space-between; margin-top:20px; padding-top:15px; border-top:1px solid #eee;">
@@ -513,35 +511,38 @@
         this.getMainCatName = (id) => (this.data.categories.main.find(x=>x.id==id) || {}).name || '未分類';
         this.getSubCatName = (id) => (this.data.categories.sub.find(x=>x.id==id) || {}).name || '';
 
-        this.handleImageUpload = (input) => {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (e) => {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_W = 600; 
-                    const scale = MAX_W / img.width;
-                    const w = (img.width > MAX_W) ? MAX_W : img.width;
-                    const h = (img.width > MAX_W) ? img.height * scale : img.height;
-                    canvas.width = w; canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, w, h);
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6); 
-                    document.getElementById('item-image-preview').src = dataUrl;
-                    document.querySelector('.image-preview-box').classList.add('has-image');
-                    document.getElementById('item-image-base64').value = dataUrl;
-                };
+        // 優化版：處理與預覽圖片連結 (解決 CORS 問題)
+        this.previewImageLink = () => {
+            const input = document.getElementById('item-image-link');
+            let url = input.value.trim();
+            const img = document.getElementById('item-image-preview');
+            const wrapper = document.getElementById('image-preview-wrapper');
+
+            if (!url) { wrapper.style.display = 'none'; return; }
+
+            // 自動嘗試轉換 Google Drive 連結為 lh3.googleusercontent.com
+            // 這種格式比較不容易被瀏覽器擋住 (CORS)
+            if (url.includes('drive.google.com')) {
+                const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                     url = `https://lh3.googleusercontent.com/d/${match[1]}`;
+                }
+            }
+
+            img.onerror = () => {
+                if(url.includes('googleusercontent.com')) {
+                    alert("⚠️ 圖片載入失敗！\n1. 請確認 Google Drive 檔案權限已設為「知道連結的任何人」。\n2. 或是該圖片檔案過大，Google 拒絕了直接連結。");
+                }
             };
+
+            img.src = url;
+            wrapper.style.display = 'block';
         };
 
         this.renderAll = () => {
             this.renderAppTitle();
             this.renderInventory(); 
-            this.renderMoveFilterOptions(); // 初始化移動頁面篩選
+            this.renderMoveFilterOptions(); 
             this.renderMoveSelect(); 
             this.renderHistory(); 
             this.renderSettings();
@@ -586,7 +587,8 @@
                 container.innerHTML += `<div class="category-header"><span>${grouped[k].name}</span><span style="font-weight:normal; font-size:0.8rem; color:var(--text-light)">${grouped[k].items.length}</span></div>`;
                 grouped[k].items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(i => {
                     const sub = this.getSubCatName(i.subCatId);
-                    const imgHtml = i.image ? `<img src="${i.image}" class="item-thumb" loading="lazy">` : `<div class="item-thumb-placeholder"><i class="ph ph-package"></i></div>`;
+                    // 圖片顯示時也加上 referrerpolicy="no-referrer"
+                    const imgHtml = i.image ? `<img src="${i.image}" class="item-thumb" loading="lazy" referrerpolicy="no-referrer">` : `<div class="item-thumb-placeholder"><i class="ph ph-package"></i></div>`;
                     container.innerHTML += `
                     <div class="neu-card item-row ${i.isLow?'low-stock-row':''}" onclick="app.openDetail('${i.id}')">
                         <div class="item-info-container">
@@ -710,10 +712,6 @@
             this.saveData(); alert('已儲存'); e.target.reset(); this.setMoveType('in');
             const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('move-time').value = now.toISOString().slice(0, 16);
-            
-            // 重置篩選（可選，這裡保留以方便連續操作同類產品）
-            // this.renderMoveFilterOptions();
-            // this.onMoveMainFilterChange();
         };
 
         // History
@@ -788,19 +786,24 @@
         this.openItemModal = (id=null) => {
             document.getElementById('modal-item').classList.add('open');
             document.getElementById('item-main-cat').innerHTML = '<option value="">選...</option>'+this.data.categories.main.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-            const imgBox = document.querySelector('.image-preview-box');
+            
+            // 清空與隱藏預覽
+            document.getElementById('image-preview-wrapper').style.display = 'none';
+            document.getElementById('item-image-preview').src = '';
+
             if(id) {
                 const i = this.getItem(id);
                 document.getElementById('modal-item-title').innerText="修改包裝";
                 document.getElementById('item-id').value=i.id; document.getElementById('item-name').value=i.name; document.getElementById('item-code').value=i.code||'';
                 document.getElementById('item-main-cat').value=i.mainCatId; this.renderSubCatOptionsInModal(); document.getElementById('item-sub-cat').value=i.subCatId;
                 document.getElementById('item-safety').value=i.safetyStock; document.getElementById('item-tags').value=i.tags; document.getElementById('item-notes').value=i.notes;
-                document.getElementById('item-image-base64').value=i.image||'';
-                document.getElementById('item-image-preview').src=i.image||'';
-                if(i.image) imgBox.classList.add('has-image'); else imgBox.classList.remove('has-image');
+                
+                // 讀取並預覽連結
+                document.getElementById('item-image-link').value = i.image || '';
+                if(i.image) this.previewImageLink();
             } else {
                 document.getElementById('modal-item-title').innerText="新增包裝"; document.getElementById('item-id').value=''; document.querySelector('#modal-item form').reset();
-                imgBox.classList.remove('has-image');
+                document.getElementById('item-image-link').value = '';
             }
         };
         this.renderSubCatOptionsInModal = () => {
@@ -810,11 +813,19 @@
         this.saveItem = (e) => {
             e.preventDefault();
             const id = document.getElementById('item-id').value;
+            
+            // 取得轉換後的圖片連結 (從預覽圖的 src 拿最準)
+            let finalImageUrl = document.getElementById('item-image-link').value.trim();
+            if(document.getElementById('item-image-preview').src && document.getElementById('image-preview-wrapper').style.display !== 'none'){
+                finalImageUrl = document.getElementById('item-image-preview').src;
+            }
+
             const obj = {
                 id: id?id:'i_'+Date.now(), name:document.getElementById('item-name').value, code:document.getElementById('item-code').value,
                 mainCatId:document.getElementById('item-main-cat').value, subCatId:document.getElementById('item-sub-cat').value,
                 safetyStock:document.getElementById('item-safety').value, tags:document.getElementById('item-tags').value,
-                notes:document.getElementById('item-notes').value, image:document.getElementById('item-image-base64').value
+                notes:document.getElementById('item-notes').value, 
+                image: finalImageUrl // 存連結
             };
             if(id){ const idx=this.data.items.findIndex(x=>x.id===id); if(idx!==-1)this.data.items[idx]=obj; }
             else { this.data.items.push(obj); }
